@@ -10,7 +10,12 @@ static int mesg_next = 0;
 static int len_check = 1;
 static char *mesg_buf;
 
-static const char *kmodule_proc_en = "kmodule";
+/* Элементы procfs */
+struct proc_dir_entry *kmodule, *kmodule_dir, *kmodule_sym;
+static const char *kmodule_proc_ent = "kmodule";
+static const char *kmodule_proc_dir = "kmodule_dir";
+static const char *kmodule_proc_sym_des = "kmodule_dir/kmodule_sym";
+static const char *kmodule_proc_sym_tar = "/proc/kmodule";
 
 static int kmodule_proc_open(struct inode *inode, struct file *file) {
 	return 0;
@@ -67,14 +72,22 @@ static struct file_operations fops = {
 	.release = kmodule_proc_release
 };
 
+static void cleanup(void) {
+	proc_remove(kmodule);
+	proc_remove(kmodule_sym);
+	proc_remove(kmodule_dir);	
+}
+
 static int __init kmodule_init(void) {
 
-	proc_create(kmodule_proc_en, 0644, NULL, &fops);
+	kmodule = proc_create(kmodule_proc_ent, 0644, NULL, &fops);
+	kmodule_dir = proc_mkdir(kmodule_proc_dir, NULL);
+	kmodule_sym = proc_symlink(kmodule_proc_sym_des, NULL, kmodule_proc_sym_tar);
 
 	mesg_buf = (char*) vmalloc(mesg_max_len);
 
 	if (!mesg_buf) {
-		remove_proc_entry(kmodule_proc_en, NULL);
+		cleanup();
 		return -ENOMEM;
 	}
 
@@ -86,7 +99,7 @@ static int __init kmodule_init(void) {
 }
 
 static void __exit kmodule_exit(void) {
-	remove_proc_entry(kmodule_proc_en, NULL);
+	cleanup();
 	vfree(mesg_buf);
 }
 
